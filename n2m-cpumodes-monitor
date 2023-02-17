@@ -1,0 +1,89 @@
+#!/bin/python3
+import os, time, subprocess
+
+
+log = "/tmp/n2m-cpumodes.log"
+running = True
+notif = 0
+gamemode = 0
+wasgamemode = 0
+
+while running :
+    cpu0_freq = subprocess.check_output(['cpufreq-info', '-fmc 0']).decode("utf-8").replace(" GHz", "")
+    cpu1_freq = subprocess.check_output(['cpufreq-info', '-fmc 1']).decode("utf-8").replace(" GHz", "")
+    cpu0_governor = subprocess.check_output(['cat', '/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor']).decode("utf-8")
+    cpu1_governor = subprocess.check_output(['cat', '/sys/devices/system/cpu/cpu1/cpufreq/scaling_governor']).decode("utf-8")
+    cpu_temp = subprocess.check_output(['sensors', '-A']).decode("utf-8")
+    cpu0_temp = float(cpu_temp.split("\n")[5].replace("°C  (high = +90.0°C, crit = +90.0°C)", "").replace("Core 0:       +", ""))
+    cpu1_temp = float(cpu_temp.split("\n")[6].replace("°C  (high = +90.0°C, crit = +90.0°C)", "").replace("Core 1:       +", ""))
+    cpu_temp = (cpu0_temp + cpu1_temp)/2
+
+    if cpu_temp>=85:
+        try:
+            os.system("n2m-cpumodes-powersavemode")
+        except Exception as error:
+            with open(log, 'a+') as file:
+                datetime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+                file.write(datetime + " : Error when changing to powersave mode\n")
+                file.write(str(error)+"\n")      
+        else:
+            with open(log, 'a+') as file:
+                datetime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+                file.write(datetime + " : Successfully changing to powersave mode\n")
+
+    elif cpu_temp>=80:
+        try:
+            os.system("n2m-cpumodes-normalmode")
+        except Exception as error:
+            with open(log, 'a+') as file:
+                datetime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+                file.write(datetime + " : Error when changing to normal mode\n")
+                file.write(str(error)+"\n")      
+        else:
+            with open(log, 'a+') as file:
+                datetime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+                file.write(datetime + " : Successfully changing to normal mode\n")
+    
+    if float(cpu0_freq)>1.60:
+        try:
+            os.system("n2m-cpumodes-normalmode")
+        except Exception as error:
+            with open(log, 'a+') as file:
+                datetime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+                file.write(datetime + " : Error when changing to normal mode\n")
+                file.write(str(error)+"\n")      
+        else:
+            with open(log, 'a+') as file:
+                datetime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+                file.write(datetime + " : Successfully changing to normal mode\n")
+
+    if float(cpu1_freq)>1.60:
+        try:
+            os.system("n2m-cpumodes-normalmode")
+        except Exception as error:
+            with open(log, 'a+') as file:
+                datetime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+                file.write(datetime + " : Error when changing to normal mode\n")
+                file.write(str(error)+"\n")      
+        else:
+            with open(log, 'a+') as file:
+                datetime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+                file.write(datetime + " : Successfully changing to normal mode\n")
+    
+    if cpu0_governor.replace("\n", "")=="performance" and cpu1_governor.replace("\n", "")=="performance" and notif==0:
+        notif = gamemode = wasgamemode = 1
+        with open(log, 'a+') as file:
+             datetime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+             file.write(datetime + " : Successfully changing to performance mode(Gamemode)\n")
+             
+    if gamemode==0 and wasgamemode==1:
+        wasgamemode = 0
+        with open(log, 'a+') as file:
+             datetime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+             file.write(datetime + " : Successfully deactivated performance mode(Gamemode)\n")
+
+    if (cpu0_governor.replace("\n", "")=="powersave" and cpu1_governor.replace("\n", "")=="powersave") or (cpu0_governor.replace("\n", "")=="ondemand" and cpu1_governor.replace("\n", "")=="ondemand"):
+        gamemode = 0
+        notif = 0
+    
+    time.sleep(1)
